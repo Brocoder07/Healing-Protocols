@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "98090894034",
+    "project_id": "accu-project",
+    "storage_bucket": "accu-project.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:98090894034:android:7aeafd26cc4cd6525d630b",
+        "android_client_info": {
+          "package_name": "com.deploy.accu_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdakZ4MXErqWt7EeBPePwVX9PMIuA117Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
