@@ -82,3 +82,8 @@ async def search_data(query: str = Query(..., min_length=2)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
