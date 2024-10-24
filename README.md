@@ -17,6 +17,6 @@ Technologies Used:
 5) Android Studio: Development environment for the app.
 
 App Functionality:
- Search: Users can search for acupuncture patterns and treatment points. The app fetches the data from a FastAPI backend, which retrieves information stored in MongoDB Atlas.
- Authentication: Only registered users from the clinic can log in using Firebase Authentication. Users without appropriate domain emails will not be allowed to sign up.
- Documentation: The app provides in-app documentation to help users understand the data and usage of the application.
+1) Search: Users can search for acupuncture patterns and treatment points. The app fetches the data from a FastAPI backend, which retrieves information stored in MongoDB Atlas.
+2) Authentication: Only registered users from the clinic can log in using Firebase Authentication. Users without appropriate domain emails will not be allowed to sign up.
+3) Documentation: The app provides in-app documentation to help users understand the data and usage of the application.
