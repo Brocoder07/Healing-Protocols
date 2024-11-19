@@ -6,6 +6,7 @@ from fastapi import FastAPI, Query, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI()
+
 # MongoDB setup
 MONGO_DETAILS = os.getenv("MONGO_URI")
 client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_DETAILS)
@@ -48,7 +49,6 @@ async def search_data(query: str = Query(..., min_length=2)):
 
         if organ_result:
             return remove_mongo_id(organ_result)
-            # Return the full document if it's an organ match
         # If no organ match, search within patterns and symptoms
         search_query = {
             "$or": [
@@ -76,7 +76,28 @@ async def search_data(query: str = Query(..., min_length=2)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@app.get("/health")
-# Endpoint for uptime robot to ping the api every 5 min to keep it active and warm
-async def health_check():
-    return {"status": "ok"}
+
+# Add HEAD method for the search endpoint
+@app.head("/search")
+async def search_head(query: str = Query(..., min_length=2)):
+    validate_query(query)  # Validate input
+    try:
+        # Check if there's a matching document
+        organ_query = {"organ": {"$regex": f"^{query}$", "$options": "i"}}
+        organ_result = await collection.find_one(organ_query)
+
+        if organ_result:
+            return {"detail": "Resource available"}
+
+        search_query = {
+            "$or": [
+                {"patterns.pattern": {"$regex": query, "$options": "i"}},
+                {"patterns.symptoms": {"$regex": query, "$options": "i"}}
+            ]
+        }
+        documents = await collection.find(search_query).to_list(1)  # Check only if at least one match exists
+        if documents:
+            return {"detail": "Resource available"}
+        raise HTTPException(status_code=404, detail="No matching data found.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
