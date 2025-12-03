@@ -10,6 +10,7 @@ app = FastAPI()
 
 # MongoDB setup
 MONGO_DETAILS = os.getenv("MONGO_URI")
+# Optimization: certifi is correctly used here
 client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_DETAILS, tlsCAFile=certifi.where())
 database = client.accupuncture_db
 collection = database.get_collection("accupuncture_data")
@@ -27,67 +28,78 @@ class AcupunctureData(BaseModel):
     patterns: List[PatternData]
 
 
-# Function to validate query input (prevent invalid input and injection attacks)
+# Function to validate query input
 def validate_query(query: str):
     if not re.match(r'^[a-zA-Z0-9 ]*$', query):
         raise HTTPException(status_code=400, detail="Invalid search term.")
 
 
-def remove_mongo_id(document):
-    if "_id" in document:
-        del document["_id"]  # Remove the _id field from the document
-    return document
-
-
-# Enhanced search endpoint with tailored responses for organ, symptom, and pattern
-@app.get("/search")
+# Optimization: Enforcing response_model for faster serialization and validation
+@app.get("/search", response_model=List[AcupunctureData])
 async def search_data(query: str = Query(..., min_length=2)):
-    validate_query(query)  # Validate input
+    validate_query(query)
     try:
-        # First check if the query matches an organ (return the entire organ document)
-        organ_query = {"organ": {"$regex": f"^{query}$", "$options": "i"}}  # Exact match with case insensitivity
-        organ_result = await collection.find_one(organ_query)
+        # 1. Exact Organ Match
+        # Optimization: Use projection {"_id": 0} to exclude ID at the DB level
+        organ_query = {"organ": {"$regex": f"^{query}$", "$options": "i"}}
+        organ_result = await collection.find_one(organ_query, {"_id": 0})
 
         if organ_result:
-            return remove_mongo_id(organ_result)
-        # If no organ match, search within patterns and symptoms
-        search_query = {
-            "$or": [
-                {"patterns.pattern": {"$regex": query, "$options": "i"}},
-                {"patterns.symptoms": {"$regex": query, "$options": "i"}}
-            ]
-        }
-        documents = await collection.find(search_query).to_list(100)
-        if not documents:
+            # Optimization: Return as a list to match response_model consistency
+            return [organ_result]
+
+        # 2. Pattern/Symptom Match (Aggregation Pipeline)
+        # Optimization: Offload filtering to MongoDB instead of Python loops
+        pipeline = [
+            {
+                "$match": {
+                    "$or": [
+                        {"patterns.pattern": {"$regex": query, "$options": "i"}},
+                        {"patterns.symptoms": {"$regex": query, "$options": "i"}}
+                    ]
+                }
+            },
+            {"$unwind": "$patterns"},
+            {
+                "$match": {
+                    "$or": [
+                        {"patterns.pattern": {"$regex": query, "$options": "i"}},
+                        {"patterns.symptoms": {"$regex": query, "$options": "i"}}
+                    ]
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$_id",
+                    "organ": {"$first": "$organ"},
+                    "patterns": {"$push": "$patterns"}
+                }
+            },
+            {"$project": {"_id": 0}},  # Exclude _id from final output
+            {"$limit": 100}  # Safety limit
+        ]
+
+        results = await collection.aggregate(pipeline).to_list(100)
+
+        if not results:
             raise HTTPException(status_code=404, detail="No matching data found.")
-        # If it's a symptom or pattern search, return the relevant parts of the document
-        results = []
-        for document in documents:
-            matched_data = {"organ": document["organ"], "patterns": []}
 
-            for pattern_data in document["patterns"]:
-                # Check if the query matches the pattern or symptoms
-                if re.search(query, pattern_data["pattern"], re.IGNORECASE) or any(
-                        re.search(query, symptom, re.IGNORECASE) for symptom in pattern_data["symptoms"]):
-                    matched_data["patterns"].append(pattern_data)
-
-            if matched_data["patterns"]:
-                results.append(remove_mongo_id(matched_data))
         return results
+
     except Exception as e:
+        # Catch errors but re-raise HTTPExceptions (like 404) correctly
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
-# Add HEAD method for the search endpoint
 @app.head("/search")
 async def search_head(query: str = Query(..., min_length=2)):
-    validate_query(query)  # Validate input
+    validate_query(query)
     try:
-        # Check if there's a matching document
         organ_query = {"organ": {"$regex": f"^{query}$", "$options": "i"}}
-        organ_result = await collection.find_one(organ_query)
-
-        if organ_result:
+        # Optimization: Use count_documents or limit 1 with projection for speed
+        if await collection.count_documents(organ_query, limit=1) > 0:
             return {"detail": "Resource available"}
 
         search_query = {
@@ -96,9 +108,11 @@ async def search_head(query: str = Query(..., min_length=2)):
                 {"patterns.symptoms": {"$regex": query, "$options": "i"}}
             ]
         }
-        documents = await collection.find(search_query).to_list(1)  # Check only if at least one match exists
-        if documents:
+        if await collection.count_documents(search_query, limit=1) > 0:
             return {"detail": "Resource available"}
+
         raise HTTPException(status_code=404, detail="No matching data found.")
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
