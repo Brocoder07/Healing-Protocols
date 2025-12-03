@@ -4,12 +4,13 @@ from typing import List
 import motor.motor_asyncio
 from fastapi import FastAPI, Query, HTTPException
 from pydantic import BaseModel
+import certifi
 
 app = FastAPI()
 
 # MongoDB setup
 MONGO_DETAILS = os.getenv("MONGO_URI")
-client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_DETAILS)
+client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_DETAILS, tlsCAFile=certifi.where())
 database = client.accupuncture_db
 collection = database.get_collection("accupuncture_data")
 
