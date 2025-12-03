@@ -1,78 +1,66 @@
 package com.deploy.accu_project
 
-import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import java.lang.Exception
-import com.google.gson.Gson
-import com.google.gson.JsonParser
-import com.google.gson.reflect.TypeToken
-import okhttp3.ResponseBody
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class AcupunctureViewModel : ViewModel() {
-    private val _loading = MutableLiveData<Boolean>()
-    val loading: LiveData<Boolean> get() = _loading
-    private val _searchResults = MutableLiveData<List<AcupunctureResponse>>()
+
+    // StateFlow is the modern replacement for LiveData in Compose
+    private val _loading = MutableStateFlow(false)
+    val loading: StateFlow<Boolean> = _loading.asStateFlow()
+
+    private val _searchResults = MutableStateFlow<List<AcupunctureResponse>>(emptyList())
+    val searchResults: StateFlow<List<AcupunctureResponse>> = _searchResults.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    private val _showErrorSnackBar = MutableStateFlow(false)
+    val showErrorSnackBar: StateFlow<Boolean> = _showErrorSnackBar.asStateFlow()
+
+    // Simple in-memory cache
     private val searchCache = mutableMapOf<String, List<AcupunctureResponse>>()
-    val searchResults: LiveData<List<AcupunctureResponse>> get() = _searchResults
-    private val _error = MutableLiveData<String?>()
-    val error: LiveData<String?> get() = _error
-    private val _showErrorSnackBar = MutableLiveData<Boolean>()
-    val showErrorSnackBar: LiveData<Boolean> get() = _showErrorSnackBar
 
     fun search(query: String) {
+        // 1. Check Cache first
         if (searchCache.containsKey(query)) {
-            _searchResults.value = searchCache[query] //Use cached result
-        } else {
-            _loading.value = true //Set loading state
-            RetrofitInstance.api.searchAcupuncture(query).enqueue(object : Callback<ResponseBody> {
-                override fun onResponse(
-                    call: Call<ResponseBody>,
-                    response: Response<ResponseBody>
-                ) {
-                    _loading.value = false //Loading done
-                    if (response.isSuccessful) {
-                        response.body()?.let { responseBody ->
-                            try {
-                                val json = responseBody.string()
-                                val jsonElement = JsonParser.parseString(json)
-                                //Checking if the response is an array or a single object
-                                if (jsonElement.isJsonArray) {
-                                    //Handle array
-                                    val listType = object : TypeToken<List<AcupunctureResponse>>() {}.type
-                                    val results: List<AcupunctureResponse> = Gson().fromJson(jsonElement, listType)
-                                    _searchResults.value = results
-                                    searchCache[query] = results //Caching the result
-                                } else if (jsonElement.isJsonObject) {
-                                    //Handle single object
-                                    val singleResult: AcupunctureResponse = Gson().fromJson(
-                                        jsonElement,
-                                        AcupunctureResponse::class.java
-                                    )
-                                    _searchResults.value = listOf(singleResult) //Converting single object to a list
-                                    searchCache[query] = listOf(singleResult) //Caching the result
-                                }
-                            } catch (e: Exception) {
-                                _error.value = "Parsing error: ${e.message}"
-                                _showErrorSnackBar.value = true
-                            }
-                        }
-                    } else {
-                        _error.value = "Error: ${response.code()}, Invalid search"
-                        _showErrorSnackBar.value = true
-                    }
-                }
-                override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                    _loading.value = false //Loading done even on failure
-                    Log.e("AcupunctureViewModel", "Failed to fetch data: ${t.message}", t)
-                    _error.value = "Response takes longer to load sometimes. Please try again later."
-                    _showErrorSnackBar.value = true
-                }
-            })
+            _searchResults.value = searchCache[query]!!
+            return
         }
+
+        // 2. Launch Coroutine for Network Request
+        viewModelScope.launch {
+            _loading.value = true
+            _error.value = null // Clear previous errors
+
+            try {
+                // Retrofit now handles the JSON parsing automatically
+                val results = RetrofitInstance.api.searchAcupuncture(query)
+
+                _searchResults.value = results
+
+                // Cache Optimization
+                if (searchCache.size > 50) {
+                    searchCache.clear()
+                }
+                searchCache[query] = results
+
+            } catch (e: Exception) {
+                // Handle Network or Parsing errors
+                _error.value = "Error: ${e.localizedMessage ?: "Unknown error occurred"}"
+                _showErrorSnackBar.value = true
+            } finally {
+                _loading.value = false
+            }
+        }
+    }
+
+    // Call this when the Snackbar is dismissed to reset the state
+    fun dismissSnackBar() {
+        _showErrorSnackBar.value = false
     }
 }
