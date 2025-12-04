@@ -43,7 +43,6 @@ fun HomePage(
     val coroutineScope = rememberCoroutineScope()
     var debounceJob by remember { mutableStateOf<Job?>(null) }
 
-    // Scroll state logic remains same...
     val scrollState = rememberScrollState()
     var isScrollingDown by remember { mutableStateOf(false) }
     var previousScrollOffset by remember { mutableIntStateOf(0) }
@@ -59,8 +58,8 @@ fun HomePage(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Use theme background
-            .padding(horizontal = 20.dp), // More side padding
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(16.dp))
@@ -102,7 +101,7 @@ fun HomePage(
                     Icon(Icons.Filled.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.primary)
                 },
                 placeholder = { Text("Search (e.g., 'Liver', 'Headache')") },
-                shape = RoundedCornerShape(50), // Fully rounded corners
+                shape = RoundedCornerShape(50), // Pill Shape
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -128,19 +127,18 @@ fun HomePage(
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else {
-            // Updated List UI
+            // Updated List UI with Cards
             if (searchResults.isNotEmpty()) {
                 LazyColumn(
                     contentPadding = PaddingValues(bottom = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp) // Space between cards
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(searchResults, key = { it.organ }) { result ->
-                        // Render a Card for each Organ/Result
                         AcupunctureResultCard(result)
                     }
                 }
             } else if (searchQuery.isEmpty()) {
-                // Empty State
+                // Friendly Empty State
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
@@ -149,7 +147,7 @@ fun HomePage(
                             tint = MaterialTheme.colorScheme.primaryContainer,
                             modifier = Modifier.size(100.dp)
                         )
-                        Text("Search for patterns, organs, or symptoms", color = Color.Gray)
+                        Text("Search for patterns, organs or symptoms", color = Color.Gray)
                     }
                 }
             }
@@ -173,15 +171,13 @@ fun HomePage(
 @Composable
 fun AcupunctureResultCard(result: AcupunctureResponse) {
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header of the Card (Organ Name)
+            // Organ Header
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),
@@ -217,7 +213,7 @@ fun AcupunctureResultCard(result: AcupunctureResponse) {
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Labelled Sections
+                    // Labelled Sections using Chip style
                     LabelChip(label = "Symptoms", content = pattern.symptoms.joinToString(", "))
                     Spacer(modifier = Modifier.height(4.dp))
                     LabelChip(label = "Treatment", content = pattern.treatment_points.joinToString(", "), isHighlight = true)
@@ -230,20 +226,20 @@ fun AcupunctureResultCard(result: AcupunctureResponse) {
 @Composable
 fun LabelChip(label: String, content: String, isHighlight: Boolean = false) {
     Row(
-        verticalAlignment = Alignment.Top // FIXED: Changed from crossAxisAlignment
+        verticalAlignment = Alignment.Top // Corrected alignment
     ) {
         Text(
             text = "$label: ",
             style = MaterialTheme.typography.bodyMedium,
             color = if (isHighlight) MaterialTheme.colorScheme.secondary else Color.Gray,
             fontWeight = FontWeight.Medium,
-            modifier = Modifier.width(80.dp) // Fixed width for alignment
+            modifier = Modifier.width(80.dp)
         )
         Text(
             text = content,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f) // Recommended: Ensures long text wraps instead of pushing off screen
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -256,24 +252,17 @@ fun DocumentationPage(navController: NavController) {
             .background(MaterialTheme.colorScheme.background)
             .padding(24.dp)
     ) {
-        // Styled Back Button
         TextButton(
             onClick = { navController.popBackStack() },
             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
         ) {
-            // You might need to import androidx.compose.material.icons.automirrored.filled.ArrowBack
-            // If that gives an error, use Icons.Default.ArrowBack
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Back"
-            )
+            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
             Spacer(modifier = Modifier.width(8.dp))
             Text("Back to Home", fontSize = 16.sp)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Title
         Text(
             text = "App Documentation",
             style = MaterialTheme.typography.headlineMedium,
@@ -283,30 +272,17 @@ fun DocumentationPage(navController: NavController) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Content Card
         Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 DocSection(title = "Database Scope", content = "Currently covering 11 Major Organs.")
-
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-                DocSection(
-                    title = "How to Search",
-                    content = "Type specific organs, patterns, or symptoms in the search bar. The search is not case-sensitive, but complete words work best."
-                )
-
+                DocSection(title = "How to Search", content = "Type specific organs, patterns, or symptoms. Not case-sensitive.")
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-                DocSection(
-                    title = "Organ Abbreviations",
-                    content = "LV = Liver\nUB = Urinary Bladder\nGB = Gallbladder\nSI = Small Intestine\nSP = Spleen\nST = Stomach\nLU = Lung\nLI = Large Intestine\nKD = Kidney\nHT = Heart\nPC = Pericardium"
-                )
+                DocSection(title = "Abbreviations", content = "LV = Liver\nUB = Urinary Bladder\nGB = Gallbladder\nSI = Small Intestine\nSP = Spleen\nST = Stomach\nLU = Lung\nLI = Large Intestine\nKD = Kidney\nHT = Heart\nPC = Pericardium")
             }
         }
     }
@@ -315,18 +291,8 @@ fun DocumentationPage(navController: NavController) {
 @Composable
 fun DocSection(title: String, content: String) {
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold
-        )
+        Text(text = title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = content,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            lineHeight = 24.sp
-        )
+        Text(text = content, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, lineHeight = 24.sp)
     }
 }
