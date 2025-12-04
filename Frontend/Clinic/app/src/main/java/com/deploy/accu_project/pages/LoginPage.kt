@@ -27,9 +27,7 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, authV
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // UPDATED: collectAsState
     val authState by authViewModel.authState.collectAsState()
-
     val context = LocalContext.current
 
     LaunchedEffect(authState) {
@@ -50,7 +48,7 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, authV
     ) {
         // Logo / Icon
         Icon(
-            imageVector = Icons.Rounded.Spa, // Or your R.drawable.accu_logo
+            imageVector = Icons.Rounded.Spa,
             contentDescription = "Logo",
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(80.dp)
@@ -72,14 +70,17 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, authV
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Styled Inputs
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+            )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -99,12 +100,15 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, authV
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+            )
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Big Primary Button
         Button(
             onClick = { authViewModel.login(email, password) },
             enabled = authState != AuthState.Loading,
